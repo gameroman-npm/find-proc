@@ -1,0 +1,5 @@
+{
+  "extends": "@gameroman/config/ts/isolated",
+  "compilerOptions": { "types": ["node"], "allowImportingTsExtensions": true },
+  "include": ["src", "tests"]
+}

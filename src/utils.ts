@@ -1,7 +1,5 @@
 import { spawn, exec, type ExecOptions } from "node:child_process";
 
-import chalk from "chalk";
-
 import type { Utils } from "./types.ts";
 
 const UNIT_MB = 1024 * 1024;
@@ -31,10 +29,6 @@ const utils: Utils = {
 
   /**
    * Strip top lines of text
-   *
-   * @param  {String} text
-   * @param  {Number} num
-   * @return {String}
    */
   stripLine(text: string, num: number): string {
     let idx = 0;
@@ -51,10 +45,6 @@ const utils: Utils = {
 
   /**
    * Split string and stop at max parts
-   *
-   * @param  {Number} line
-   * @param  {Number} max
-   * @return {Array}
    */
   split(line: string, max: number): string[] {
     const cols = line.trim().split(/\s+/);
@@ -85,11 +75,6 @@ const utils: Utils = {
    * ```
    * [ ['foo', 'bar2'], ['valx', 'valz'] ]
    * ```
-   *
-   * @param  {String} text  raw table text
-   * @param  {Array} idxes  the column index list to extract
-   * @param  {Number} max   max column number of table
-   * @return {Array}
    */
   extractColumns(text: string, idxes: number[], max: number): string[][] {
     const lines = text.split(/(\r\n|\n|\r)/);
@@ -131,9 +116,6 @@ const utils: Utils = {
    * ```
    * [{ Header1: 'foo', Header2: 'bar', Header3: 'val' }, ...]
    * ```
-   *
-   * @param  {String} data raw table data
-   * @return {Array}
    */
   parseTable(data: string): Record<string, string>[] {
     const lines = data
@@ -185,7 +167,7 @@ export function debugLog(
       `[debug] stderr:\n${(stderr || "").trim() || "(empty)"}\n`;
   }
   text += "\n";
-  process.stderr.write(chalk.gray(text));
+  process.stderr.write(text);
 }
 
 export default utils;

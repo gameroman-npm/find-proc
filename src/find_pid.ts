@@ -248,6 +248,7 @@ const finders: Record<
       const file = dir + "/" + process.pid;
       const cmd = 'netstat -tunp >> "' + file + '"';
 
+      // oxlint-disable-next-line typescript/no-floating-promises
       ensureDir(dir).then(() => {
         utils.exec(cmd, (_execErr, execStdout, execStderr) => {
           debugLog(config, cmd, execStdout || "", execStderr || "");
@@ -262,7 +263,7 @@ const finders: Record<
                 .find((column) => matchPort(column, port));
 
               if (columns?.[1]) {
-                const pid = parseInt(columns[1].split("/", 1)[0], 10);
+                const pid = parseInt(columns[1].split("/", 1)[0]!, 10);
 
                 if (isValidPid(pid)) {
                   resolve(pid);
@@ -281,7 +282,9 @@ const finders: Record<
 };
 
 // Alias for other platforms
+// @ts-expect-error
 finders.freebsd = finders.darwin;
+// @ts-expect-error
 finders.sunos = finders.darwin;
 
 function findPidByPort(port: number, config: FindConfig = {}): Promise<number> {

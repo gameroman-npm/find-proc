@@ -145,9 +145,9 @@ const finders: Record<string, PlatformFinder> = {
           .parseTable(lines.join(""))
           .filter((row) => {
             if (cond.pid !== undefined) {
-              return row.ProcessId === String(cond.pid);
+              return row["ProcessId"] === String(cond.pid);
             } else if (cond.name) {
-              const rowName = row.Name || "";
+              const rowName = row["Name"] || "";
               if (cond.config.strict) {
                 return (
                   rowName === cond.name ||
@@ -155,18 +155,18 @@ const finders: Record<string, PlatformFinder> = {
                     rowName.slice(0, -4) === cond.name)
                 );
               } else {
-                return matchName(row.CommandLine || rowName, cond.name);
+                return matchName(row["CommandLine"] || rowName, cond.name);
               }
             } else {
               return true;
             }
           })
           .map((row) => ({
-            pid: parseInt(row.ProcessId, 10),
-            ppid: parseInt(row.ParentProcessId, 10),
-            bin: row.ExecutablePath,
-            name: row.Name || "",
-            cmd: row.CommandLine!,
+            pid: parseInt(row["ProcessId"]!, 10),
+            ppid: parseInt(row["ParentProcessId"]!, 10),
+            bin: row["ExecutablePath"],
+            name: row["Name"] || "",
+            cmd: row["CommandLine"]!,
           }));
         resolve(list);
       });
@@ -236,8 +236,11 @@ const finders: Record<string, PlatformFinder> = {
 };
 
 // Alias for other platforms
+// @ts-expect-error
 finders.linux = finders.darwin;
+// @ts-expect-error
 finders.sunos = finders.darwin;
+// @ts-expect-error
 finders.freebsd = finders.darwin;
 
 function findProcess(cond: FindCondition): Promise<ProcessInfo[]> {

@@ -9,13 +9,19 @@ import listen, { close } from "./fixtures/listen_port.ts";
 import listenUdp, { close as closeUdp } from "./fixtures/listen_port_udp.ts";
 
 describe("Find process test", function () {
-  for (const { protocol, start, stop, port } of [
+  for (const { protocol, start, stop, port, skip } of [
     { protocol: "TCP", start: listen, stop: close, port: 12345 },
-    { protocol: "UDP", start: listenUdp, stop: closeUdp, port: 12346 },
+    {
+      protocol: "UDP",
+      start: listenUdp,
+      stop: closeUdp,
+      port: 12346,
+      skip: process.platform === "darwin",
+    },
   ] as const) {
     it(
       `should find process of listening ${protocol} port`,
-      { timeout: 10_000 },
+      { timeout: 10_000, skip },
       async function () {
         await start(port);
         try {

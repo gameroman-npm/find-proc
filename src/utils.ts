@@ -1,4 +1,4 @@
-import { spawn, exec, type ExecOptions } from "node:child_process";
+import { exec, type ExecOptions } from "node:child_process";
 
 import type { Utils } from "./types.ts";
 
@@ -18,13 +18,6 @@ const utils: Utils = {
       encoding: "utf8",
     };
     exec(cmd, options, callback);
-  },
-
-  /**
-   * spawn command
-   */
-  spawn(cmd: string, args: string[], options: any): any {
-    return spawn(cmd, args, options);
   },
 
   /**

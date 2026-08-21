@@ -58,7 +58,6 @@ export interface Utils {
     command: string,
     callback: (error: Error | null, stdout: string, stderr: string) => void,
   ) => void;
-  spawn: (command: string, args: string[], options: any) => any;
   stripLine: (text: string, count: number) => string;
   split: (line: string, max: number) => string[];
   extractColumns: (

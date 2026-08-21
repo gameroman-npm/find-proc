@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import * as path from "node:path";
 
 import type { ProcessInfo, FindCondition, PlatformFinder } from "./types.ts";
@@ -120,7 +121,7 @@ const finders: Record<string, PlatformFinder> = {
         console.info("Query command: " + cmd);
       }
 
-      const proc = utils.spawn("powershell.exe", ["/c", cmd], {
+      const proc = spawn("powershell.exe", ["/c", cmd], {
         detached: false,
         windowsHide: true,
       });

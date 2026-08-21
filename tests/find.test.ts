@@ -26,8 +26,8 @@ describe("Find process test", function () {
         await start(port);
         try {
           const list = await find("port", port);
-          assert(list.length === 1);
-          assert.equal(process.pid, list[0]!.pid);
+          assert.strictEqual(list.length, 1);
+          assert.strictEqual(process.pid, list[0]!.pid);
         } finally {
           stop();
         }
@@ -43,8 +43,8 @@ describe("Find process test", function () {
 
     try {
       const list = await find("pid", cps.pid!);
-      assert(list.length === 1);
-      assert.equal(cps.pid, list[0]!.pid);
+      assert.strictEqual(list.length, 1);
+      assert.strictEqual(cps.pid, list[0]!.pid);
     } finally {
       cps.kill();
     }
@@ -62,13 +62,13 @@ describe("Find process test", function () {
 
       try {
         const list = await find("name", "AAABBBCCC");
-        assert(list.length === 1);
-        assert.equal(cps.pid, list[0]!.pid);
+        assert.strictEqual(list.length, 1);
+        assert.strictEqual(cps.pid, list[0]!.pid);
 
         // test strict mode
         const strictList = await find("name", "node", true);
         for (const item of strictList) {
-          assert.equal(
+          assert.strictEqual(
             item.name,
             process.platform == "win32" ? "node.exe" : "node",
           );
@@ -88,8 +88,8 @@ describe("Find process test", function () {
 
     try {
       const list = await find("name", /A{2,3}B{2,3}C{2,3}/gi);
-      assert(list.length === 1);
-      assert.equal(cps.pid, list[0]!.pid);
+      assert.strictEqual(list.length, 1);
+      assert.strictEqual(cps.pid, list[0]!.pid);
     } finally {
       cps.kill();
     }
@@ -97,6 +97,6 @@ describe("Find process test", function () {
 
   it("should resolve empty array when pid not exists", async function () {
     const list = await find("port", 100000);
-    assert(list.length === 0);
+    assert.strictEqual(list.length, 0);
   });
 });

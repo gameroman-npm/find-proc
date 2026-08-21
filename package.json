@@ -16,7 +16,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "u": "bun run --sequential format build test:bun test",
+    "u": "bun run --sequential format build lint",
     "test": "node --test",
     "test:bun": "bun test --dots",
     "lint": "oxlint",

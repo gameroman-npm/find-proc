@@ -27,7 +27,7 @@
   "devDependencies": {
     "@gameroman/config": "0.2.9",
     "@types/node": "26.2.0",
-    "chalk": "4.1.2",
+    "chalk": "6.0.0",
     "loglevel": "1.9.2",
     "oxfmt": "0.64.0",
     "oxlint": "1.79.0",

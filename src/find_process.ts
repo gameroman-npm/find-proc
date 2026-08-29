@@ -42,15 +42,14 @@ function fetchName(fullpath: string): string {
   return path.basename(fullpath);
 }
 
-const finders: Record<string, PlatformFinder> = {
-  darwin(cond: FindCondition): Promise<ProcessInfo[]> {
-    return new Promise((resolve, reject) => {
-      let cmd: string;
-      if ("pid" in cond && cond.pid !== undefined) {
-        cmd = `ps -p ${cond.pid} -ww -o pid,ppid,uid,gid,args`;
-      } else {
-        cmd = "ps ax -ww -o pid,ppid,uid,gid,args";
-      }
+function darwinFinder(cond: FindCondition): Promise<ProcessInfo[]> {
+  return new Promise((resolve, reject) => {
+    let cmd: string;
+    if ("pid" in cond && cond.pid !== undefined) {
+      cmd = `ps -p ${cond.pid} -ww -o pid,ppid,uid,gid,args`;
+    } else {
+      cmd = "ps ax -ww -o pid,ppid,uid,gid,args";
+    }
 
       if (cond.config.verbose) {
         console.info("Query command: " + cmd);
@@ -109,7 +108,13 @@ const finders: Record<string, PlatformFinder> = {
         }
       });
     });
-  },
+}
+
+const finders: Record<string, PlatformFinder> = {
+  darwin: darwinFinder,
+  linux: darwinFinder,
+  sunos: darwinFinder,
+  freebsd: darwinFinder,
 
   win32(cond: FindCondition): Promise<ProcessInfo[]> {
     return new Promise((resolve, reject) => {
@@ -235,14 +240,6 @@ const finders: Record<string, PlatformFinder> = {
     });
   },
 };
-
-// Alias for other platforms
-// @ts-expect-error
-finders.linux = finders.darwin;
-// @ts-expect-error
-finders.sunos = finders.darwin;
-// @ts-expect-error
-finders.freebsd = finders.darwin;
 
 function findProcess(cond: FindCondition): Promise<ProcessInfo[]> {
   const platform = process.platform;

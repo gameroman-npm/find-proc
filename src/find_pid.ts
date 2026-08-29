@@ -182,16 +182,20 @@ function findPidByLsof(port: number, config: FindConfig): Promise<number> {
   });
 }
 
+function darwinFinder(port: number, config: FindConfig): Promise<number> {
+  return findPidByNetstatDarwin(port, config).catch((err) => {
+    debugLog(config, `netstat failed (${err.message}), falling back to lsof`);
+    return findPidByLsof(port, config);
+  });
+}
+
 const finders: Record<
   string,
   (port: number, config: FindConfig) => Promise<number>
 > = {
-  darwin(port: number, config: FindConfig): Promise<number> {
-    return findPidByNetstatDarwin(port, config).catch((err) => {
-      debugLog(config, `netstat failed (${err.message}), falling back to lsof`);
-      return findPidByLsof(port, config);
-    });
-  },
+  darwin: darwinFinder,
+  freebsd: darwinFinder,
+  sunos: darwinFinder,
 
   linux(port: number, config: FindConfig): Promise<number> {
     return findPidBySs(port, config)
@@ -280,12 +284,6 @@ const finders: Record<
     });
   },
 };
-
-// Alias for other platforms
-// @ts-expect-error
-finders.freebsd = finders.darwin;
-// @ts-expect-error
-finders.sunos = finders.darwin;
 
 function findPidByPort(port: number, config: FindConfig = {}): Promise<number> {
   const platform = process.platform;

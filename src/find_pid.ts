@@ -1,7 +1,6 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 
-import log from "./logger.ts";
 import type { FindConfig } from "./types.ts";
 import utils, { debugLog } from "./utils.ts";
 
@@ -53,8 +52,8 @@ function isValidPid(pid: number): boolean {
 
 function findPidBySs(port: number, config: FindConfig): Promise<number> {
   return execCmd("ss -tunlp", config).then(({ stdout, stderr }) => {
-    if (stderr) {
-      log.warn(stderr);
+    if (stderr && config.logLevel !== "error") {
+      console.warn(stderr);
     }
 
     // strip header line
@@ -83,9 +82,9 @@ function findPidByNetstatLinux(
   config: FindConfig,
 ): Promise<number> {
   return execCmd("netstat -tunlp", config).then(({ stdout, stderr }) => {
-    if (stderr) {
+    if (stderr && config.logLevel !== "error") {
       // netstat -p ouputs warning if user is no-root
-      log.warn(stderr);
+      console.warn(stderr);
     }
 
     // replace header
@@ -112,8 +111,8 @@ function findPidByNetstatDarwin(
 ): Promise<number> {
   return execCmd("netstat -anv -p TCP && netstat -anv -p UDP", config).then(
     ({ stdout, stderr }) => {
-      if (stderr) {
-        log.warn(stderr);
+      if (stderr && config.logLevel !== "error") {
+        console.warn(stderr);
       }
 
       // Drop group header, e.g. "Active Internet connections"
@@ -162,8 +161,8 @@ function findPidByNetstatDarwin(
 
 function findPidByLsof(port: number, config: FindConfig): Promise<number> {
   return execCmd(`lsof -nP -i :${port}`, config).then(({ stdout, stderr }) => {
-    if (stderr) {
-      log.warn(stderr);
+    if (stderr && config.logLevel !== "error") {
+      console.warn(stderr);
     }
 
     // strip header line

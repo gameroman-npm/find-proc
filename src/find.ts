@@ -1,6 +1,5 @@
 import findPidByPort from "./find_pid.ts";
 import findProcess from "./find_process.ts";
-import log from "./logger.ts";
 import type { ProcessInfo, FindConfig, FindMethod } from "./types.ts";
 
 const findBy = {
@@ -57,10 +56,6 @@ function find(
   // in all other cases whatever is passed is overwritten to false
   if (by !== "name" || typeof value !== "string") {
     config.strict = false;
-  }
-
-  if (config.logLevel) {
-    log.setLevel(config.logLevel);
   }
 
   return new Promise((resolve, reject) => {

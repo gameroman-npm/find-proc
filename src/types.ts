@@ -40,21 +40,3 @@ export type FindMethod = "port" | "pid" | "name";
  * Platform-specific finder function
  */
 export type PlatformFinder = (cond: FindCondition) => Promise<ProcessInfo[]>;
-
-/**
- * Utility function types
- */
-export interface Utils {
-  exec: (
-    command: string,
-    callback: (error: Error | null, stdout: string, stderr: string) => void,
-  ) => void;
-  stripLine: (text: string, count: number) => string;
-  split: (line: string, max: number) => string[];
-  extractColumns: (
-    text: string,
-    columns: number[],
-    total: number,
-  ) => string[][];
-  parseTable: (text: string) => Record<string, string>[];
-}

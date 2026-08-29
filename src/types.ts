@@ -15,11 +15,8 @@ export interface ProcessInfo {
  * Configuration options for find operations
  */
 export interface FindConfig {
-  logLevel?: "error" | "warn" | "info" | "debug";
+  logLevel?: "warn" | "error";
   strict?: boolean;
-  verbose?: boolean;
-  /** @internal */
-  debug?: boolean;
 }
 
 /**
@@ -35,15 +32,6 @@ export interface FindCondition {
  * Supported find methods
  */
 export type FindMethod = "port" | "pid" | "name";
-
-/**
- * Find function signature
- */
-export type FindFunction = (
-  by: FindMethod,
-  value: string | number,
-  options?: FindConfig | boolean,
-) => Promise<ProcessInfo[]>;
 
 /**
  * Platform-specific finder function

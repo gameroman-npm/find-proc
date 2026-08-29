@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import * as path from "node:path";
 
 import type { ProcessInfo, FindCondition, PlatformFinder } from "./types.ts";
-import utils, { debugLog } from "./utils.ts";
+import utils from "./utils.ts";
 
 function matchName(text: string, name: string | RegExp): boolean {
   if (!name) return true;
@@ -52,12 +52,7 @@ const finders: Record<string, PlatformFinder> = {
         cmd = "ps ax -ww -o pid,ppid,uid,gid,args";
       }
 
-      if (cond.config.verbose) {
-        console.info("Query command: " + cmd);
-      }
-
       utils.exec(cmd, function (err, stdout, stderr) {
-        debugLog(cond.config, cmd, stdout || "", stderr || "");
         if (err) {
           if ("pid" in cond && cond.pid !== undefined) {
             // when pid not exists, call `ps -p ...` will cause error, we have to
@@ -117,10 +112,6 @@ const finders: Record<string, PlatformFinder> = {
         "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance -className win32_process | select Name,ProcessId,ParentProcessId,CommandLine,ExecutablePath";
       const lines: string[] = [];
 
-      if (cond.config.verbose) {
-        console.info("Query command: " + cmd);
-      }
-
       const proc = spawn("powershell.exe", ["/c", cmd], {
         detached: false,
         windowsHide: true,
@@ -136,7 +127,6 @@ const finders: Record<string, PlatformFinder> = {
         );
       });
       proc.on("close", (code: number) => {
-        debugLog(cond.config, cmd, lines.join(""), "");
         if (code !== 0) {
           return reject(
             new Error("Command '" + cmd + "' terminated with code: " + code),
@@ -178,12 +168,7 @@ const finders: Record<string, PlatformFinder> = {
     return new Promise((resolve, reject) => {
       const cmd = "ps";
 
-      if (cond.config.verbose) {
-        console.info("Query command: " + cmd);
-      }
-
       utils.exec(cmd, function (err, stdout, stderr) {
-        debugLog(cond.config, cmd, stdout || "", stderr || "");
         if (err) {
           if (cond.pid !== undefined) {
             // when pid not exists, call `ps -p ...` will cause error, we have to

@@ -146,21 +146,4 @@ const utils: Utils = {
   },
 };
 
-export function debugLog(
-  config: { debug?: boolean },
-  msg: string,
-  stdout?: string,
-  stderr?: string,
-): void {
-  if (!config.debug) return;
-  let text = `[debug] ${msg}\n`;
-  if (stdout !== undefined || stderr !== undefined) {
-    text +=
-      `[debug] stdout:\n${(stdout || "").trim() || "(empty)"}\n` +
-      `[debug] stderr:\n${(stderr || "").trim() || "(empty)"}\n`;
-  }
-  text += "\n";
-  process.stderr.write(text);
-}
-
 export default utils;

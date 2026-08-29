@@ -48,7 +48,7 @@ function matchPort(column: string[], port: number): boolean {
 }
 
 function isValidPid(pid: number): boolean {
-  return !isNaN(pid) && pid > 0;
+  return pid > 0;
 }
 
 function findPidBySs(port: number, config: FindConfig): Promise<number> {

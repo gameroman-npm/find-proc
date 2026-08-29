@@ -37,15 +37,6 @@ export interface FindCondition {
 export type FindMethod = "port" | "pid" | "name";
 
 /**
- * Find function signature
- */
-export type FindFunction = (
-  by: FindMethod,
-  value: string | number,
-  options?: FindConfig | boolean,
-) => Promise<ProcessInfo[]>;
-
-/**
  * Platform-specific finder function
  */
 export type PlatformFinder = (cond: FindCondition) => Promise<ProcessInfo[]>;

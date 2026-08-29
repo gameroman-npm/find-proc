@@ -4,7 +4,7 @@ import type { Utils } from "./types.ts";
 
 const UNIT_MB = 1024 * 1024;
 
-const utils: Utils = {
+const utils = {
   /**
    * exec command with maxBuffer size
    */

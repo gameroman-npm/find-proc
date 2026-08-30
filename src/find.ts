@@ -5,7 +5,7 @@ import type { ProcessInfo, FindConfig, FindMethod } from "./types.ts";
 
 const findBy = {
   port(port: number, config: FindConfig): Promise<ProcessInfo[]> {
-    return findPidByPort(port, config).then(
+    return findPidByPort(port).then(
       (pid) => {
         return findBy.pid(pid, config);
       },

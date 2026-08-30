@@ -2,8 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 
 import log from "./logger.ts";
-import type { FindConfig } from "./types.ts";
-import utils, { debugLog } from "./utils.ts";
+import utils from "./utils.ts";
 
 const ensureDir = (path: string): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -23,13 +22,9 @@ const ensureDir = (path: string): Promise<void> =>
 /**
  * Execute command and return stdout/stderr as a promise
  */
-function execCmd(
-  cmd: string,
-  config: FindConfig,
-): Promise<{ stdout: string; stderr: string }> {
+function execCmd(cmd: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     utils.exec(cmd, function (err, stdout, stderr) {
-      debugLog(config, cmd, stdout || "", stderr || "");
       if (err) {
         reject(err);
       } else {
@@ -51,8 +46,8 @@ function isValidPid(pid: number): boolean {
   return !isNaN(pid) && pid > 0;
 }
 
-function findPidBySs(port: number, config: FindConfig): Promise<number> {
-  return execCmd("ss -tunlp", config).then(({ stdout, stderr }) => {
+function findPidBySs(port: number): Promise<number> {
+  return execCmd("ss -tunlp").then(({ stdout, stderr }) => {
     if (stderr) {
       log.warn(stderr);
     }
@@ -78,11 +73,8 @@ function findPidBySs(port: number, config: FindConfig): Promise<number> {
   });
 }
 
-function findPidByNetstatLinux(
-  port: number,
-  config: FindConfig,
-): Promise<number> {
-  return execCmd("netstat -tunlp", config).then(({ stdout, stderr }) => {
+function findPidByNetstatLinux(port: number): Promise<number> {
+  return execCmd("netstat -tunlp").then(({ stdout, stderr }) => {
     if (stderr) {
       // netstat -p ouputs warning if user is no-root
       log.warn(stderr);
@@ -106,11 +98,8 @@ function findPidByNetstatLinux(
   });
 }
 
-function findPidByNetstatDarwin(
-  port: number,
-  config: FindConfig,
-): Promise<number> {
-  return execCmd("netstat -anv -p TCP && netstat -anv -p UDP", config).then(
+function findPidByNetstatDarwin(port: number): Promise<number> {
+  return execCmd("netstat -anv -p TCP && netstat -anv -p UDP").then(
     ({ stdout, stderr }) => {
       if (stderr) {
         log.warn(stderr);
@@ -160,8 +149,8 @@ function findPidByNetstatDarwin(
   );
 }
 
-function findPidByLsof(port: number, config: FindConfig): Promise<number> {
-  return execCmd(`lsof -nP -i :${port}`, config).then(({ stdout, stderr }) => {
+function findPidByLsof(port: number): Promise<number> {
+  return execCmd(`lsof -nP -i :${port}`).then(({ stdout, stderr }) => {
     if (stderr) {
       log.warn(stderr);
     }
@@ -182,34 +171,21 @@ function findPidByLsof(port: number, config: FindConfig): Promise<number> {
   });
 }
 
-const finders: Record<
-  string,
-  (port: number, config: FindConfig) => Promise<number>
-> = {
-  darwin(port: number, config: FindConfig): Promise<number> {
-    return findPidByNetstatDarwin(port, config).catch((err) => {
-      debugLog(config, `netstat failed (${err.message}), falling back to lsof`);
-      return findPidByLsof(port, config);
+const finders: Record<string, (port: number) => Promise<number>> = {
+  darwin(port: number): Promise<number> {
+    return findPidByNetstatDarwin(port).catch(() => {
+      return findPidByLsof(port);
     });
   },
 
-  linux(port: number, config: FindConfig): Promise<number> {
-    return findPidBySs(port, config)
-      .catch((err) => {
-        debugLog(config, `ss failed (${err.message}), falling back to netstat`);
-        return findPidByNetstatLinux(port, config);
-      })
-      .catch((err) => {
-        debugLog(
-          config,
-          `netstat failed (${err.message}), falling back to lsof`,
-        );
-        return findPidByLsof(port, config);
-      });
+  linux(port: number): Promise<number> {
+    return findPidBySs(port)
+      .catch(() => findPidByNetstatLinux(port))
+      .catch(() => findPidByLsof(port));
   },
 
-  win32(port: number, config: FindConfig): Promise<number> {
-    return execCmd("netstat -ano", config).then(({ stdout, stderr }) => {
+  win32(port: number): Promise<number> {
+    return execCmd("netstat -ano").then(({ stdout, stderr }) => {
       if (stderr) {
         throw new Error(stderr);
       }
@@ -236,7 +212,7 @@ const finders: Record<
     });
   },
 
-  android(port: number, config: FindConfig): Promise<number> {
+  android(port: number): Promise<number> {
     return new Promise((resolve, reject) => {
       // on Android Termux, an warning will be emitted when executing `netstat`
       // with option `-p` says 'showing only processes with your user ID', but
@@ -250,8 +226,7 @@ const finders: Record<
 
       // oxlint-disable-next-line typescript/no-floating-promises
       ensureDir(dir).then(() => {
-        utils.exec(cmd, (_execErr, execStdout, execStderr) => {
-          debugLog(config, cmd, execStdout || "", execStderr || "");
+        utils.exec(cmd, () => {
           fs.readFile(file, "utf8", (err, data) => {
             fs.unlink(file, () => {});
             if (err) {
@@ -287,7 +262,7 @@ finders.freebsd = finders.darwin;
 // @ts-expect-error
 finders.sunos = finders.darwin;
 
-function findPidByPort(port: number, config: FindConfig = {}): Promise<number> {
+function findPidByPort(port: number): Promise<number> {
   const platform = process.platform;
 
   return new Promise((resolve, reject) => {
@@ -297,7 +272,7 @@ function findPidByPort(port: number, config: FindConfig = {}): Promise<number> {
       return reject(new Error(`platform ${platform} is unsupported`));
     }
 
-    finder(port, config).then(resolve, reject);
+    finder(port).then(resolve, reject);
   });
 }
 

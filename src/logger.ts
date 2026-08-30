@@ -1,10 +1,8 @@
-export type LogLevel = "error" | "warn" | "info" | "debug";
+export type LogLevel = "error" | "warn";
 
 const LEVEL_WEIGHT: Record<LogLevel, number> = {
   error: 0,
   warn: 1,
-  info: 2,
-  debug: 3,
 };
 
 let currentWeight = LEVEL_WEIGHT.warn;
@@ -22,8 +20,5 @@ export default {
   },
   warn(...args: unknown[]): void {
     if (enabled("warn")) console.warn(...args);
-  },
-  info(...args: unknown[]): void {
-    if (enabled("info")) console.info(...args);
   },
 };

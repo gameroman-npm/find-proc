@@ -1,5 +1,5 @@
 /**
- * Process information interface
+ * Process information
  */
 export interface ProcessInfo {
   pid: number;
@@ -11,8 +11,10 @@ export interface ProcessInfo {
   cmd: string;
 }
 
+export type LogLevel = "warn" | "error";
+
 export interface FindConfig {
-  logLevel?: "warn" | "error";
+  logLevel?: LogLevel;
 }
 
 export interface FindByNameConfig extends FindConfig {

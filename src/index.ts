@@ -1,2 +1,2 @@
-export { default } from "./find.ts";
-export type { FindMethod, FindConfig, ProcessInfo } from "./types.ts";
+export { findByPort, findByPid, findByName } from "./find.ts";
+export type { ProcessInfo } from "./types.ts";

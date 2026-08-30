@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import * as path from "node:path";
 
-import type { ProcessInfo, FindCondition, PlatformFinder } from "./types.ts";
+import type { ProcessInfo, FindByNameConfig } from "./types.ts";
 import { exec, stripLine, parseTable, extractColumns } from "./utils.ts";
 
 function matchName(text: string, name: string | RegExp): boolean {
@@ -41,6 +41,14 @@ function fetchName(fullpath: string): string {
   }
   return path.basename(fullpath);
 }
+
+interface FindCondition {
+  pid?: number;
+  name?: string | RegExp;
+  config: FindByNameConfig;
+}
+
+type PlatformFinder = (cond: FindCondition) => Promise<ProcessInfo[]>;
 
 const finders: Record<string, PlatformFinder> = {
   darwin(cond: FindCondition): Promise<ProcessInfo[]> {

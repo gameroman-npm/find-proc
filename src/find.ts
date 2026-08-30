@@ -1,18 +1,9 @@
 import findPidByPort from "./find_pid.ts";
 import findProcess from "./find_process.ts";
-import log from "./logger.ts";
 import type { ProcessInfo, FindConfig, FindByNameConfig } from "./types.ts";
 
-const DEFAULT_CONFIG: FindConfig = { logLevel: "warn" };
-
-function applyLogLevel(config: FindConfig): void {
-  if (config.logLevel) {
-    log.setLevel(config.logLevel);
-  }
-}
-
 function resolveConfig(options?: FindConfig): FindConfig {
-  return { ...DEFAULT_CONFIG, ...options };
+  return { logLevel: "warn", ...options };
 }
 
 /**
@@ -23,8 +14,7 @@ export function findByPort(
   options?: FindConfig,
 ): Promise<ProcessInfo[]> {
   const config = resolveConfig(options);
-  applyLogLevel(config);
-  return findPidByPort(port).then(
+  return findPidByPort(port, undefined, config.logLevel).then(
     (pid) => {
       return findProcess({ pid, config });
     },
@@ -43,7 +33,6 @@ export function findByPid(
   options?: FindConfig,
 ): Promise<ProcessInfo[]> {
   const config = resolveConfig(options);
-  applyLogLevel(config);
   return findProcess({ pid, config });
 }
 
@@ -58,15 +47,8 @@ export function findByName(
     ...resolveConfig(typeof options === "object" ? options : undefined),
   };
 
-  if (typeof options === "boolean") {
+  if (typeof options === "boolean" && typeof name === "string") {
     config.strict = options;
-  }
-
-  applyLogLevel(config);
-
-  // strict is only applicable when finding by name and the value is a string
-  if (typeof name !== "string") {
-    config.strict = false;
   }
 
   return findProcess({ name, config });

@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 
 import type { LogLevel } from "./types.ts";
-import { exec as execCmdRaw, stripLine, extractColumns } from "./utils.ts";
+import { exec, stripLine, extractColumns } from "./utils.ts";
 
 const ensureDir = (path: string): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -24,7 +24,7 @@ const ensureDir = (path: string): Promise<void> =>
  */
 function execCmd(
   cmd: string,
-  execFn: typeof execCmdRaw,
+  execFn: typeof exec,
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     execFn(cmd, function (err, stdout, stderr) {
@@ -51,7 +51,7 @@ function isValidPid(pid: number): boolean {
 
 function findPidBySs(
   port: number,
-  execFn: typeof execCmdRaw,
+  execFn: typeof exec,
   logLevel?: LogLevel,
 ): Promise<number> {
   return execCmd("ss -tunlp", execFn).then(({ stdout, stderr }) => {
@@ -82,7 +82,7 @@ function findPidBySs(
 
 function findPidByNetstatLinux(
   port: number,
-  execFn: typeof execCmdRaw,
+  execFn: typeof exec,
   logLevel?: LogLevel,
 ): Promise<number> {
   return execCmd("netstat -tunlp", execFn).then(({ stdout, stderr }) => {
@@ -111,7 +111,7 @@ function findPidByNetstatLinux(
 
 function findPidByNetstatDarwin(
   port: number,
-  execFn: typeof execCmdRaw,
+  execFn: typeof exec,
   logLevel?: LogLevel,
 ): Promise<number> {
   return execCmd("netstat -anv -p TCP && netstat -anv -p UDP", execFn).then(
@@ -165,7 +165,7 @@ function findPidByNetstatDarwin(
 
 function findPidByLsof(
   port: number,
-  execFn: typeof execCmdRaw,
+  execFn: typeof exec,
   logLevel?: LogLevel,
 ): Promise<number> {
   return execCmd(`lsof -nP -i :${port}`, execFn).then(({ stdout, stderr }) => {
@@ -191,15 +191,11 @@ function findPidByLsof(
 
 const finders: Record<
   string,
-  (
-    port: number,
-    execFn: typeof execCmdRaw,
-    logLevel?: LogLevel,
-  ) => Promise<number>
+  (port: number, execFn: typeof exec, logLevel?: LogLevel) => Promise<number>
 > = {
   darwin(
     port: number,
-    execFn: typeof execCmdRaw,
+    execFn: typeof exec,
     logLevel?: LogLevel,
   ): Promise<number> {
     return findPidByNetstatDarwin(port, execFn, logLevel).catch(() => {
@@ -209,7 +205,7 @@ const finders: Record<
 
   linux(
     port: number,
-    execFn: typeof execCmdRaw,
+    execFn: typeof exec,
     logLevel?: LogLevel,
   ): Promise<number> {
     return findPidBySs(port, execFn, logLevel)
@@ -217,7 +213,7 @@ const finders: Record<
       .catch(() => findPidByLsof(port, execFn, logLevel));
   },
 
-  win32(port: number, execFn: typeof execCmdRaw): Promise<number> {
+  win32(port: number, execFn: typeof exec): Promise<number> {
     return execCmd("netstat -ano", execFn).then(({ stdout, stderr }) => {
       if (stderr) {
         throw new Error(stderr);
@@ -245,7 +241,7 @@ const finders: Record<
     });
   },
 
-  android(port: number, execFn: typeof execCmdRaw): Promise<number> {
+  android(port: number, execFn: typeof exec): Promise<number> {
     return new Promise((resolve, reject) => {
       // on Android Termux, an warning will be emitted when executing `netstat`
       // with option `-p` says 'showing only processes with your user ID', but
@@ -297,7 +293,7 @@ finders.sunos = finders.darwin;
 
 function findPidByPort(
   port: number,
-  execFn: typeof execCmdRaw = execCmdRaw,
+  execFn: typeof exec = exec,
   logLevel?: LogLevel,
 ): Promise<number> {
   const platform = process.platform;

@@ -15,9 +15,6 @@ export default {
   setLevel(level: LogLevel): void {
     currentWeight = LEVEL_WEIGHT[level];
   },
-  error(...args: unknown[]): void {
-    if (enabled("error")) console.error(...args);
-  },
   warn(...args: unknown[]): void {
     if (enabled("warn")) console.warn(...args);
   },

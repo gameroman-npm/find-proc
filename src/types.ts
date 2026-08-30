@@ -11,29 +11,10 @@ export interface ProcessInfo {
   cmd: string;
 }
 
-/**
- * Configuration options for find operations
- */
 export interface FindConfig {
   logLevel?: "warn" | "error";
+}
+
+export interface FindByNameConfig extends FindConfig {
   strict?: boolean;
 }
-
-/**
- * Condition for finding processes
- */
-export interface FindCondition {
-  pid?: number;
-  name?: string | RegExp;
-  config: FindConfig;
-}
-
-/**
- * Supported find methods
- */
-export type FindMethod = "port" | "pid" | "name";
-
-/**
- * Platform-specific finder function
- */
-export type PlatformFinder = (cond: FindCondition) => Promise<ProcessInfo[]>;

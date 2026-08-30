@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 
 import log from "./logger.ts";
-import utils from "./utils.ts";
+import { exec as execCmdRaw, stripLine, extractColumns } from "./utils.ts";
 
 const ensureDir = (path: string): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -22,9 +22,12 @@ const ensureDir = (path: string): Promise<void> =>
 /**
  * Execute command and return stdout/stderr as a promise
  */
-function execCmd(cmd: string): Promise<{ stdout: string; stderr: string }> {
+function execCmd(
+  cmd: string,
+  execFn: typeof execCmdRaw,
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    utils.exec(cmd, function (err, stdout, stderr) {
+    execFn(cmd, function (err, stdout, stderr) {
       if (err) {
         reject(err);
       } else {
@@ -46,18 +49,18 @@ function isValidPid(pid: number): boolean {
   return !isNaN(pid) && pid > 0;
 }
 
-function findPidBySs(port: number): Promise<number> {
-  return execCmd("ss -tunlp").then(({ stdout, stderr }) => {
+function findPidBySs(port: number, execFn: typeof execCmdRaw): Promise<number> {
+  return execCmd("ss -tunlp", execFn).then(({ stdout, stderr }) => {
     if (stderr) {
       log.warn(stderr);
     }
 
     // strip header line
     // Columns: Netid(0) State(1) Recv-Q(2) Send-Q(3) Local Address:Port(4) Peer Address:Port(5) Process(6)
-    const data = utils.stripLine(stdout, 1);
-    const columns = utils
-      .extractColumns(data, [4, 6], 7)
-      .find((column) => matchPort(column, port));
+    const data = stripLine(stdout, 1);
+    const columns = extractColumns(data, [4, 6], 7).find((column) =>
+      matchPort(column, port),
+    );
 
     if (columns?.[1]) {
       const pidMatch = columns[1].match(/pid=(\d+)/);
@@ -73,18 +76,21 @@ function findPidBySs(port: number): Promise<number> {
   });
 }
 
-function findPidByNetstatLinux(port: number): Promise<number> {
-  return execCmd("netstat -tunlp").then(({ stdout, stderr }) => {
+function findPidByNetstatLinux(
+  port: number,
+  execFn: typeof execCmdRaw,
+): Promise<number> {
+  return execCmd("netstat -tunlp", execFn).then(({ stdout, stderr }) => {
     if (stderr) {
       // netstat -p ouputs warning if user is no-root
       log.warn(stderr);
     }
 
     // replace header
-    const data = utils.stripLine(stdout, 2);
-    const columns = utils
-      .extractColumns(data, [3, 6], 7)
-      .find((column) => matchPort(column, port));
+    const data = stripLine(stdout, 2);
+    const columns = extractColumns(data, [3, 6], 7).find((column) =>
+      matchPort(column, port),
+    );
 
     if (columns?.[1]) {
       const pid = parseInt(columns[1].split("/", 1)[0]!, 10);
@@ -98,19 +104,22 @@ function findPidByNetstatLinux(port: number): Promise<number> {
   });
 }
 
-function findPidByNetstatDarwin(port: number): Promise<number> {
-  return execCmd("netstat -anv -p TCP && netstat -anv -p UDP").then(
+function findPidByNetstatDarwin(
+  port: number,
+  execFn: typeof execCmdRaw,
+): Promise<number> {
+  return execCmd("netstat -anv -p TCP && netstat -anv -p UDP", execFn).then(
     ({ stdout, stderr }) => {
       if (stderr) {
         log.warn(stderr);
       }
 
       // Drop group header, e.g. "Active Internet connections"
-      const table = utils.stripLine(stdout, 1);
+      const table = stripLine(stdout, 1);
       // Get the next line with the column headers
       const headers = table.slice(0, table.indexOf("\n"));
       // Drop the header line to get the table body
-      const body = utils.stripLine(table, 1);
+      const body = stripLine(table, 1);
 
       // In macOS >=Sequoia, columns include `rxbytes` and `txbytes`, which
       // shifts the PID column to index 10. Detect this with a search
@@ -119,8 +128,7 @@ function findPidByNetstatDarwin(port: number): Promise<number> {
       // by a single space.)
       const pidColumn = headers.indexOf("rxbytes") >= 0 ? 10 : 8;
 
-      const found = utils
-        .extractColumns(body, [0, 3, pidColumn], 10)
+      const found = extractColumns(body, [0, 3, pidColumn], 10)
         .filter((row) => {
           return !!String(row[0]).match(/^(udp|tcp)/);
         })
@@ -149,16 +157,19 @@ function findPidByNetstatDarwin(port: number): Promise<number> {
   );
 }
 
-function findPidByLsof(port: number): Promise<number> {
-  return execCmd(`lsof -nP -i :${port}`).then(({ stdout, stderr }) => {
+function findPidByLsof(
+  port: number,
+  execFn: typeof execCmdRaw,
+): Promise<number> {
+  return execCmd(`lsof -nP -i :${port}`, execFn).then(({ stdout, stderr }) => {
     if (stderr) {
       log.warn(stderr);
     }
 
     // strip header line
     // lsof columns: COMMAND(0) PID(1) USER(2) ...
-    const data = utils.stripLine(stdout, 1);
-    const columns = utils.extractColumns(data, [1], 2);
+    const data = stripLine(stdout, 1);
+    const columns = extractColumns(data, [1], 2);
 
     for (const col of columns) {
       const pid = parseInt(col[0]!, 10);
@@ -171,33 +182,36 @@ function findPidByLsof(port: number): Promise<number> {
   });
 }
 
-const finders: Record<string, (port: number) => Promise<number>> = {
-  darwin(port: number): Promise<number> {
-    return findPidByNetstatDarwin(port).catch(() => {
-      return findPidByLsof(port);
+const finders: Record<
+  string,
+  (port: number, execFn: typeof execCmdRaw) => Promise<number>
+> = {
+  darwin(port: number, execFn: typeof execCmdRaw): Promise<number> {
+    return findPidByNetstatDarwin(port, execFn).catch(() => {
+      return findPidByLsof(port, execFn);
     });
   },
 
-  linux(port: number): Promise<number> {
-    return findPidBySs(port)
-      .catch(() => findPidByNetstatLinux(port))
-      .catch(() => findPidByLsof(port));
+  linux(port: number, execFn: typeof execCmdRaw): Promise<number> {
+    return findPidBySs(port, execFn)
+      .catch(() => findPidByNetstatLinux(port, execFn))
+      .catch(() => findPidByLsof(port, execFn));
   },
 
-  win32(port: number): Promise<number> {
-    return execCmd("netstat -ano").then(({ stdout, stderr }) => {
+  win32(port: number, execFn: typeof execCmdRaw): Promise<number> {
+    return execCmd("netstat -ano", execFn).then(({ stdout, stderr }) => {
       if (stderr) {
         throw new Error(stderr);
       }
 
       // replace header
-      const data = utils.stripLine(stdout, 4);
+      const data = stripLine(stdout, 4);
       // Extract address(1), and both possible PID positions:
       // TCP has State at index 3, PID at index 4 (5 columns)
       // UDP has no State column, PID at index 3 (4 columns)
-      const columns = utils
-        .extractColumns(data, [1, 3, 4], 5)
-        .find((column) => matchPort(column, port));
+      const columns = extractColumns(data, [1, 3, 4], 5).find((column) =>
+        matchPort(column, port),
+      );
 
       if (columns) {
         // TCP: PID at index 4 → columns[2]; UDP: PID at index 3 → columns[1]
@@ -212,7 +226,7 @@ const finders: Record<string, (port: number) => Promise<number>> = {
     });
   },
 
-  android(port: number): Promise<number> {
+  android(port: number, execFn: typeof execCmdRaw): Promise<number> {
     return new Promise((resolve, reject) => {
       // on Android Termux, an warning will be emitted when executing `netstat`
       // with option `-p` says 'showing only processes with your user ID', but
@@ -226,16 +240,16 @@ const finders: Record<string, (port: number) => Promise<number>> = {
 
       // oxlint-disable-next-line typescript/no-floating-promises
       ensureDir(dir).then(() => {
-        utils.exec(cmd, () => {
+        execFn(cmd, () => {
           fs.readFile(file, "utf8", (err, data) => {
             fs.unlink(file, () => {});
             if (err) {
               reject(err);
             } else {
-              data = utils.stripLine(data, 2);
-              const columns = utils
-                .extractColumns(data, [3, 6], 7)
-                .find((column) => matchPort(column, port));
+              data = stripLine(data, 2);
+              const columns = extractColumns(data, [3, 6], 7).find((column) =>
+                matchPort(column, port),
+              );
 
               if (columns?.[1]) {
                 const pid = parseInt(columns[1].split("/", 1)[0]!, 10);
@@ -262,7 +276,10 @@ finders.freebsd = finders.darwin;
 // @ts-expect-error
 finders.sunos = finders.darwin;
 
-function findPidByPort(port: number): Promise<number> {
+function findPidByPort(
+  port: number,
+  execFn: typeof execCmdRaw = execCmdRaw,
+): Promise<number> {
   const platform = process.platform;
 
   return new Promise((resolve, reject) => {
@@ -272,7 +289,7 @@ function findPidByPort(port: number): Promise<number> {
       return reject(new Error(`platform ${platform} is unsupported`));
     }
 
-    finder(port).then(resolve, reject);
+    finder(port, execFn).then(resolve, reject);
   });
 }
 

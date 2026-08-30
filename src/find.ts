@@ -1,6 +1,7 @@
 import findPidByPort from "./find_pid.ts";
 import findProcess from "./find_process.ts";
 import type { ProcessInfo, FindConfig, FindByNameConfig } from "./types.ts";
+import { exec } from "./utils.ts";
 
 function resolveConfig(options?: FindConfig): FindConfig {
   return { logLevel: "warn", ...options };
@@ -9,12 +10,12 @@ function resolveConfig(options?: FindConfig): FindConfig {
 /**
  * Find the process listening on the given port
  */
-export function findByPort(
+export function byPort(
   port: number,
   options?: FindConfig,
 ): Promise<ProcessInfo[]> {
   const config = resolveConfig(options);
-  return findPidByPort(port, undefined, config.logLevel).then(
+  return findPidByPort(port, exec, config.logLevel).then(
     (pid) => {
       return findProcess({ pid, config });
     },
@@ -28,7 +29,7 @@ export function findByPort(
 /**
  * Find the process with the given PID
  */
-export function findByPid(
+export function byPid(
   pid: number,
   options?: FindConfig,
 ): Promise<ProcessInfo[]> {
@@ -39,7 +40,7 @@ export function findByPid(
 /**
  * Find processes by name
  */
-export function findByName(
+export function byName(
   name: string | RegExp,
   options?: FindByNameConfig | boolean,
 ): Promise<ProcessInfo[]> {

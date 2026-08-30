@@ -4,7 +4,7 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { findByPort, findByPid, findByName } from "../src/index.ts";
+import * as findProcess from "../src/index.ts";
 import listen, { close } from "./fixtures/listen_port.ts";
 import listenUdp, { close as closeUdp } from "./fixtures/listen_port_udp.ts";
 
@@ -25,7 +25,7 @@ describe("Find process test", function () {
       async function () {
         await start(port);
         try {
-          const list = await findByPort(port);
+          const list = await findProcess.byPort(port);
           assert.strictEqual(list.length, 1);
           assert.strictEqual(process.pid, list[0]!.pid);
         } finally {
@@ -42,7 +42,7 @@ describe("Find process test", function () {
     ]);
 
     try {
-      const list = await findByPid(cps.pid!);
+      const list = await findProcess.byPid(cps.pid!);
       assert.strictEqual(list.length, 1);
       assert.strictEqual(cps.pid, list[0]!.pid);
     } finally {
@@ -61,12 +61,12 @@ describe("Find process test", function () {
       ]);
 
       try {
-        const list = await findByName("AAABBBCCC");
+        const list = await findProcess.byName("AAABBBCCC");
         assert.strictEqual(list.length, 1);
         assert.strictEqual(cps.pid, list[0]!.pid);
 
         // test strict mode
-        const strictList = await findByName("node", true);
+        const strictList = await findProcess.byName("node", true);
         for (const item of strictList) {
           assert.strictEqual(
             item.name,
@@ -87,7 +87,7 @@ describe("Find process test", function () {
     ]);
 
     try {
-      const list = await findByName(/A{2,3}B{2,3}C{2,3}/gi);
+      const list = await findProcess.byName(/A{2,3}B{2,3}C{2,3}/gi);
       assert.strictEqual(list.length, 1);
       assert.strictEqual(cps.pid, list[0]!.pid);
     } finally {
@@ -96,7 +96,7 @@ describe("Find process test", function () {
   });
 
   it("should resolve empty array when pid not exists", async function () {
-    const list = await findByPort(100000);
+    const list = await findProcess.byPort(100000);
     assert.strictEqual(list.length, 0);
   });
 });

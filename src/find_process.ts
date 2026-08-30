@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import * as path from "node:path";
 
 import type { ProcessInfo, FindCondition, PlatformFinder } from "./types.ts";
-import utils from "./utils.ts";
+import { exec, stripLine, parseTable, extractColumns } from "./utils.ts";
 
 function matchName(text: string, name: string | RegExp): boolean {
   if (!name) return true;
@@ -52,7 +52,7 @@ const finders: Record<string, PlatformFinder> = {
         cmd = "ps ax -ww -o pid,ppid,uid,gid,args";
       }
 
-      utils.exec(cmd, function (err, stdout, stderr) {
+      exec(cmd, function (err, stdout, stderr) {
         if (err) {
           if ("pid" in cond && cond.pid !== undefined) {
             // when pid not exists, call `ps -p ...` will cause error, we have to
@@ -68,10 +68,9 @@ const finders: Record<string, PlatformFinder> = {
             return;
           }
 
-          const data = utils.stripLine(stdout, 1);
-          const columns = utils
-            .extractColumns(data, [0, 1, 2, 3, 4], 5)
-            .filter((column) => {
+          const data = stripLine(stdout, 1);
+          const columns = extractColumns(data, [0, 1, 2, 3, 4], 5).filter(
+            (column) => {
               if (column[0] && cond.pid !== undefined) {
                 return column[0] === String(cond.pid);
               } else if (column[4] && cond.name) {
@@ -79,7 +78,8 @@ const finders: Record<string, PlatformFinder> = {
               } else {
                 return !!column[0];
               }
-            });
+            },
+          );
 
           let list = columns.map((column) => {
             const cmd = String(column[4]);
@@ -132,8 +132,7 @@ const finders: Record<string, PlatformFinder> = {
             new Error("Command '" + cmd + "' terminated with code: " + code),
           );
         }
-        const list = utils
-          .parseTable(lines.join(""))
+        const list = parseTable(lines.join(""))
           .filter((row) => {
             if (cond.pid !== undefined) {
               return row["ProcessId"] === String(cond.pid);
@@ -168,7 +167,7 @@ const finders: Record<string, PlatformFinder> = {
     return new Promise((resolve, reject) => {
       const cmd = "ps";
 
-      utils.exec(cmd, function (err, stdout, stderr) {
+      exec(cmd, function (err, stdout, stderr) {
         if (err) {
           if (cond.pid !== undefined) {
             // when pid not exists, call `ps -p ...` will cause error, we have to
@@ -184,18 +183,16 @@ const finders: Record<string, PlatformFinder> = {
             return;
           }
 
-          const data = utils.stripLine(stdout, 1);
-          const columns = utils
-            .extractColumns(data, [0, 3], 4)
-            .filter((column) => {
-              if (column[0] && cond.pid !== undefined) {
-                return column[0] === String(cond.pid);
-              } else if (column[1] && cond.name) {
-                return matchName(column[1], cond.name);
-              } else {
-                return !!column[0];
-              }
-            });
+          const data = stripLine(stdout, 1);
+          const columns = extractColumns(data, [0, 3], 4).filter((column) => {
+            if (column[0] && cond.pid !== undefined) {
+              return column[0] === String(cond.pid);
+            } else if (column[1] && cond.name) {
+              return matchName(column[1], cond.name);
+            } else {
+              return !!column[0];
+            }
+          });
 
           let list = columns.map((column) => {
             const cmd = String(column[1]);

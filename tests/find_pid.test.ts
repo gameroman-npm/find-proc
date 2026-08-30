@@ -5,7 +5,6 @@ import * as path from "node:path";
 import { describe, it, afterEach, beforeEach } from "node:test";
 
 import findPidByPort from "../src/find_pid.ts";
-import utils from "../src/utils.ts";
 
 type ExecCallback = (
   error: Error | null,
@@ -13,7 +12,8 @@ type ExecCallback = (
   stderr: string,
 ) => void;
 
-const originalExec = utils.exec;
+type ExecFn = (cmd: string, callback: ExecCallback) => void;
+
 const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform")!;
 
 const NOT_FOUND = { error: new Error("command not found") };
@@ -40,8 +40,8 @@ function mockExec(
     string,
     { stdout?: string; stderr?: string; error?: Error }
   >,
-) {
-  utils.exec = function (cmd: string, callback: ExecCallback) {
+): ExecFn {
+  return function (cmd: string, callback: ExecCallback) {
     for (const [pattern, resp] of Object.entries(responses)) {
       if (cmd.includes(pattern)) {
         if (resp.error) {
@@ -65,7 +65,6 @@ function setPlatform(platform: string) {
 
 describe("findPidByPort fallback logic", function () {
   afterEach(function () {
-    utils.exec = originalExec;
     Object.defineProperty(process, "platform", originalPlatform);
   });
 
@@ -75,29 +74,33 @@ describe("findPidByPort fallback logic", function () {
     });
 
     it("ss succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": {
           stdout:
             SS_HDR +
             'tcp   LISTEN 0 128 0.0.0.0:3000 0.0.0.0:* users:(("node",pid=1234,fd=19))\n',
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 1234));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 1234),
+      );
     });
 
     it("ss with IPv6 address", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": {
           stdout:
             SS_HDR +
             'tcp   LISTEN 0 128 [::]:3000 [::]:* users:(("node",pid=4321,fd=19))\n',
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 4321));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 4321),
+      );
     });
 
     it("ss fails → netstat succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": NOT_FOUND,
         "netstat -tunlp": {
           stdout:
@@ -105,11 +108,13 @@ describe("findPidByPort fallback logic", function () {
             "tcp   0   0 0.0.0.0:3000   0.0.0.0:*   LISTEN   5678/node\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 5678));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 5678),
+      );
     });
 
     it("ss + netstat fail → lsof succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": NOT_FOUND,
         "netstat -tunlp": NOT_FOUND,
         "lsof -nP -i :3000": {
@@ -118,11 +123,13 @@ describe("findPidByPort fallback logic", function () {
             "node   9999 user  19u  IPv4 12345  0t0  TCP *:3000 (LISTEN)\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 9999));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 9999),
+      );
     });
 
     it("permission issues (no PID visible) → falls through to lsof", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": {
           stdout: SS_HDR + "tcp   LISTEN 0 128 0.0.0.0:3000 0.0.0.0:*\n",
         },
@@ -138,20 +145,22 @@ describe("findPidByPort fallback logic", function () {
             "node   7777 user  19u  IPv4 12345  0t0  TCP *:3000 (LISTEN)\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 7777));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 7777),
+      );
     });
 
     it("all three fail → rejects", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": NOT_FOUND,
         "netstat -tunlp": NOT_FOUND,
         "lsof -nP -i :3000": NOT_FOUND,
       });
-      return assert.rejects(findPidByPort(3000));
+      return assert.rejects(findPidByPort(3000, execFn));
     });
 
     it("lsof returns first PID from multiple rows", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": NOT_FOUND,
         "netstat -tunlp": NOT_FOUND,
         "lsof -nP -i :3000": {
@@ -161,16 +170,18 @@ describe("findPidByPort fallback logic", function () {
             "node   2222 user  20u  IPv4 12346  0t0  TCP 127.0.0.1:3000 (LISTEN)\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 1111));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 1111),
+      );
     });
 
     it("lsof header-only output → rejects", function () {
-      mockExec({
+      const execFn = mockExec({
         "ss -tunlp": NOT_FOUND,
         "netstat -tunlp": NOT_FOUND,
         "lsof -nP -i :3000": { stdout: LSOF_HDR },
       });
-      return assert.rejects(findPidByPort(3000));
+      return assert.rejects(findPidByPort(3000, execFn));
     });
   });
 
@@ -180,29 +191,33 @@ describe("findPidByPort fallback logic", function () {
     });
 
     it("netstat succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": {
           stdout:
             NETSTAT_DARWIN_HDR +
             "tcp4   0   0  *.3000   *.*   LISTEN   131072 131072   2222   0\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 2222));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 2222),
+      );
     });
 
     it("netstat Sequoia format (rxbytes)", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": {
           stdout:
             NETSTAT_SEQUOIA_HDR +
             "tcp4   0   0  *.3000   *.*   LISTEN   131072 131072   0   0   3333   0\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 3333));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 3333),
+      );
     });
 
     it("netstat fails → lsof succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": NOT_FOUND,
         "lsof -nP -i :3000": {
           stdout:
@@ -210,11 +225,13 @@ describe("findPidByPort fallback logic", function () {
             "node   8888 user  19u  IPv4 12345  0t0  TCP *:3000 (LISTEN)\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 8888));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 8888),
+      );
     });
 
     it("netstat no match → lsof succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": { stdout: NETSTAT_DARWIN_HDR },
         "lsof -nP -i :3000": {
           stdout:
@@ -222,23 +239,30 @@ describe("findPidByPort fallback logic", function () {
             "node   6666 user  19u  IPv4 12345  0t0  TCP *:3000 (LISTEN)\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 6666));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 6666),
+      );
     });
 
     it("netstat with processname:pid format", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": {
           stdout:
             NETSTAT_DARWIN_HDR +
             "tcp4   0   0  *.3000   *.*   LISTEN   131072 131072   node:2222   0\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 2222));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 2222),
+      );
     });
 
     it("both fail → rejects", function () {
-      mockExec({ "netstat -anv": NOT_FOUND, "lsof -nP -i :3000": NOT_FOUND });
-      return assert.rejects(findPidByPort(3000));
+      const execFn = mockExec({
+        "netstat -anv": NOT_FOUND,
+        "lsof -nP -i :3000": NOT_FOUND,
+      });
+      return assert.rejects(findPidByPort(3000, execFn));
     });
   });
 
@@ -248,41 +272,45 @@ describe("findPidByPort fallback logic", function () {
     });
 
     it("netstat -ano succeeds", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -ano": {
           stdout:
             NETSTAT_WIN32_HDR +
             "  TCP    0.0.0.0:3000   0.0.0.0:0   LISTENING   4444\r\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 4444));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 4444),
+      );
     });
 
     it("netstat -ano stderr → rejects", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -ano": { stdout: "", stderr: "access denied" },
       });
-      return assert.rejects(findPidByPort(3000), /access denied/);
+      return assert.rejects(findPidByPort(3000, execFn), /access denied/);
     });
 
     it("netstat -ano UDP (no State column)", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -ano": {
           stdout: NETSTAT_WIN32_HDR + "  UDP    0.0.0.0:3000   *:*   4444\r\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 4444));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 4444),
+      );
     });
 
     it("netstat -ano no match → rejects", function () {
-      mockExec({
+      const execFn = mockExec({
         "netstat -ano": {
           stdout:
             NETSTAT_WIN32_HDR +
             "  TCP    0.0.0.0:8080   0.0.0.0:0   LISTENING   5555\r\n",
         },
       });
-      return assert.rejects(findPidByPort(3000));
+      return assert.rejects(findPidByPort(3000, execFn));
     });
   });
 
@@ -292,12 +320,12 @@ describe("findPidByPort fallback logic", function () {
       "Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name\n";
 
     // Android finder writes netstat output to a tmpfile then reads it back.
-    // We mock utils.exec to write the desired content to that file.
-    function mockAndroidExec(fileContent: string) {
+    // We mock exec to write the desired content to that file.
+    function mockAndroidExec(fileContent: string): ExecFn {
       const dir = os.tmpdir() + "/.find-process";
       const file = path.join(dir, String(process.pid));
       fs.mkdirSync(dir, { recursive: true });
-      utils.exec = function (cmd: string, callback: ExecCallback) {
+      return function (cmd: string, callback: ExecCallback) {
         if (cmd.includes("netstat -tunp")) {
           fs.writeFileSync(file, fileContent);
           callback(null, "", "");
@@ -315,50 +343,53 @@ describe("findPidByPort fallback logic", function () {
       const output =
         NETSTAT_ANDROID_HDR +
         "tcp   0   0 0.0.0.0:3000   0.0.0.0:*   LISTEN   1234/node\n";
-      mockAndroidExec(output);
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 1234));
+      return findPidByPort(3000, mockAndroidExec(output)).then((pid) =>
+        assert.strictEqual(pid, 1234),
+      );
     });
 
     it("no match → rejects", function () {
       const output =
         NETSTAT_ANDROID_HDR +
         "tcp   0   0 0.0.0.0:8080   0.0.0.0:*   LISTEN   5555/node\n";
-      mockAndroidExec(output);
-      return assert.rejects(findPidByPort(3000));
+      return assert.rejects(findPidByPort(3000, mockAndroidExec(output)));
     });
 
     it("pid is dash (no permission) → rejects", function () {
       const output =
         NETSTAT_ANDROID_HDR +
         "tcp   0   0 0.0.0.0:3000   0.0.0.0:*   LISTEN   -\n";
-      mockAndroidExec(output);
-      return assert.rejects(findPidByPort(3000));
+      return assert.rejects(findPidByPort(3000, mockAndroidExec(output)));
     });
   });
 
   describe("Platform aliases", function () {
     it("freebsd uses darwin finder", function () {
       setPlatform("freebsd");
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": {
           stdout:
             NETSTAT_DARWIN_HDR +
             "tcp4   0   0  *.3000   *.*   LISTEN   131072 131072   2222   0\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 2222));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 2222),
+      );
     });
 
     it("sunos uses darwin finder", function () {
       setPlatform("sunos");
-      mockExec({
+      const execFn = mockExec({
         "netstat -anv": {
           stdout:
             NETSTAT_DARWIN_HDR +
             "tcp4   0   0  *.3000   *.*   LISTEN   131072 131072   3333   0\n",
         },
       });
-      return findPidByPort(3000).then((pid) => assert.strictEqual(pid, 3333));
+      return findPidByPort(3000, execFn).then((pid) =>
+        assert.strictEqual(pid, 3333),
+      );
     });
 
     it("unsupported platform → rejects", function () {

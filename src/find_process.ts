@@ -45,7 +45,7 @@ function fetchName(fullpath: string): string {
 interface FindCondition {
   pid?: number;
   name?: string | RegExp;
-  config: FindByNameConfig;
+  config?: FindByNameConfig;
 }
 
 type PlatformFinder = (cond: FindCondition) => Promise<ProcessInfo[]>;
@@ -104,7 +104,7 @@ const finders: Record<string, PlatformFinder> = {
             };
           });
 
-          if (cond.config.strict && cond.name) {
+          if (cond.config?.strict && cond.name) {
             list = list.filter((item) => item.name === cond.name);
           }
 
@@ -146,7 +146,7 @@ const finders: Record<string, PlatformFinder> = {
               return row["ProcessId"] === String(cond.pid);
             } else if (cond.name) {
               const rowName = row["Name"] || "";
-              if (cond.config.strict) {
+              if (cond.config?.strict) {
                 return (
                   rowName === cond.name ||
                   (rowName.endsWith(".exe") &&
@@ -215,7 +215,7 @@ const finders: Record<string, PlatformFinder> = {
             };
           });
 
-          if (cond.config.strict && cond.name) {
+          if (cond.config?.strict && cond.name) {
             list = list.filter((item) => item.name === cond.name);
           }
 

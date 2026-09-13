@@ -11,12 +11,6 @@ export interface ProcessInfo {
   cmd: string;
 }
 
-export type LogLevel = "warn" | "error";
-
-export interface FindConfig {
-  logLevel?: LogLevel;
-}
-
-export interface FindByNameConfig extends FindConfig {
+export interface FindByNameConfig {
   strict?: boolean;
 }

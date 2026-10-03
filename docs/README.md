@@ -5,9 +5,9 @@
 ### Find process by PID
 
 ```typescript
-import { findByPid } from "find-proc";
+import { byPid } from "find-proc";
 
-findByPid(12345)
+byPid(12345)
   .then((list) => {
     console.log(list);
   })
@@ -19,9 +19,9 @@ findByPid(12345)
 ### Find process listening on port 80
 
 ```typescript
-import { findByPort } from "find-proc";
+import { byPort } from "find-proc";
 
-findByPort(80).then((list) => {
+byPort(80).then((list) => {
   if (!list.length) {
     console.log("Port 80 is free now");
   } else {
@@ -33,9 +33,9 @@ findByPort(80).then((list) => {
 ### Find all nginx processes
 
 ```typescript
-import { findByName } from "find-proc";
+import { byName } from "find-proc";
 
-findByName("nginx", true).then((list) => {
+byName("nginx", true).then((list) => {
   console.log(`There are ${list.length} nginx process(es)`);
 });
 ```
@@ -43,14 +43,11 @@ findByName("nginx", true).then((list) => {
 ### Find processes with configuration options
 
 ```typescript
-import { findByName, type FindConfig } from "find-proc";
+import { byName } from "find-proc";
 
-const config: FindConfig = {
-  strict: true,
-  logLevel: "warn",
-};
+const config = { strict: true };
 
-findByName("nginx", config).then((list) => {
+byName("nginx", config).then((list) => {
   console.log(`Found ${list.length} nginx process(es)`);
 });
 ```
@@ -58,11 +55,11 @@ findByName("nginx", config).then((list) => {
 ### Using async/await
 
 ```typescript
-import { findByName } from "find-proc";
+import { byName } from "find-proc";
 
 async function findNodeProcesses() {
   try {
-    const processes = await findByName("node");
+    const processes = await byName("node");
     console.log(`Found ${processes.length} Node.js processes`);
 
     processes.forEach((proc) => {

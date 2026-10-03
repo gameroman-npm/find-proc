@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "pawfs",
+      "name": "find-proc",
       "devDependencies": {
         "@gameroman/config": "0.3.0",
         "@types/node": "26.6.4",

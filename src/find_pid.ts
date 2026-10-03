@@ -1,7 +1,6 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 
-import type { LogLevel } from "./types.ts";
 import { exec, stripLine, extractColumns } from "./utils.ts";
 
 const ensureDir = (path: string): Promise<void> =>
@@ -49,16 +48,8 @@ function isValidPid(pid: number): boolean {
   return !isNaN(pid) && pid > 0;
 }
 
-function findPidBySs(
-  port: number,
-  execFn: typeof exec,
-  logLevel?: LogLevel,
-): Promise<number> {
-  return execCmd("ss -tunlp", execFn).then(({ stdout, stderr }) => {
-    if (stderr && logLevel !== "error") {
-      console.warn(stderr);
-    }
-
+function findPidBySs(port: number, execFn: typeof exec): Promise<number> {
+  return execCmd("ss -tunlp", execFn).then(({ stdout }) => {
     // strip header line
     // Columns: Netid(0) State(1) Recv-Q(2) Send-Q(3) Local Address:Port(4) Peer Address:Port(5) Process(6)
     const data = stripLine(stdout, 1);
@@ -83,14 +74,8 @@ function findPidBySs(
 function findPidByNetstatLinux(
   port: number,
   execFn: typeof exec,
-  logLevel?: LogLevel,
 ): Promise<number> {
-  return execCmd("netstat -tunlp", execFn).then(({ stdout, stderr }) => {
-    if (stderr && logLevel !== "error") {
-      // netstat -p ouputs warning if user is no-root
-      console.warn(stderr);
-    }
-
+  return execCmd("netstat -tunlp", execFn).then(({ stdout }) => {
     // replace header
     const data = stripLine(stdout, 2);
     const columns = extractColumns(data, [3, 6], 7).find((column) =>
@@ -112,14 +97,9 @@ function findPidByNetstatLinux(
 function findPidByNetstatDarwin(
   port: number,
   execFn: typeof exec,
-  logLevel?: LogLevel,
 ): Promise<number> {
   return execCmd("netstat -anv -p TCP && netstat -anv -p UDP", execFn).then(
-    ({ stdout, stderr }) => {
-      if (stderr && logLevel !== "error") {
-        console.warn(stderr);
-      }
-
+    ({ stdout }) => {
       // Drop group header, e.g. "Active Internet connections"
       const table = stripLine(stdout, 1);
       // Get the next line with the column headers
@@ -163,16 +143,8 @@ function findPidByNetstatDarwin(
   );
 }
 
-function findPidByLsof(
-  port: number,
-  execFn: typeof exec,
-  logLevel?: LogLevel,
-): Promise<number> {
-  return execCmd(`lsof -nP -i :${port}`, execFn).then(({ stdout, stderr }) => {
-    if (stderr && logLevel !== "error") {
-      console.warn(stderr);
-    }
-
+function findPidByLsof(port: number, execFn: typeof exec): Promise<number> {
+  return execCmd(`lsof -nP -i :${port}`, execFn).then(({ stdout }) => {
     // strip header line
     // lsof columns: COMMAND(0) PID(1) USER(2) ...
     const data = stripLine(stdout, 1);
@@ -191,26 +163,18 @@ function findPidByLsof(
 
 const finders: Record<
   string,
-  (port: number, execFn: typeof exec, logLevel?: LogLevel) => Promise<number>
+  (port: number, execFn: typeof exec) => Promise<number>
 > = {
-  darwin(
-    port: number,
-    execFn: typeof exec,
-    logLevel?: LogLevel,
-  ): Promise<number> {
-    return findPidByNetstatDarwin(port, execFn, logLevel).catch(() => {
-      return findPidByLsof(port, execFn, logLevel);
+  darwin(port: number, execFn: typeof exec): Promise<number> {
+    return findPidByNetstatDarwin(port, execFn).catch(() => {
+      return findPidByLsof(port, execFn);
     });
   },
 
-  linux(
-    port: number,
-    execFn: typeof exec,
-    logLevel?: LogLevel,
-  ): Promise<number> {
-    return findPidBySs(port, execFn, logLevel)
-      .catch(() => findPidByNetstatLinux(port, execFn, logLevel))
-      .catch(() => findPidByLsof(port, execFn, logLevel));
+  linux(port: number, execFn: typeof exec): Promise<number> {
+    return findPidBySs(port, execFn)
+      .catch(() => findPidByNetstatLinux(port, execFn))
+      .catch(() => findPidByLsof(port, execFn));
   },
 
   win32(port: number, execFn: typeof exec): Promise<number> {
@@ -294,7 +258,6 @@ finders.sunos = finders.darwin;
 function findPidByPort(
   port: number,
   execFn: typeof exec = exec,
-  logLevel?: LogLevel,
 ): Promise<number> {
   const platform = process.platform;
 
@@ -305,7 +268,7 @@ function findPidByPort(
       return reject(new Error(`platform ${platform} is unsupported`));
     }
 
-    finder(port, execFn, logLevel).then(resolve, reject);
+    finder(port, execFn).then(resolve, reject);
   });
 }
 

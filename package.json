@@ -27,9 +27,9 @@
   "devDependencies": {
     "@gameroman/config": "0.3.0",
     "@types/node": "26.6.6",
-    "oxfmt": "0.75.0",
-    "oxlint": "1.90.0",
-    "oxlint-tsgolint": "7.0.2005",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "oxlint-tsgolint": "7.0.2007",
     "tsdown": "0.23.4",
     "typescript": "7.0.2"
   },
